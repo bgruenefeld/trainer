@@ -1,0 +1,38 @@
+<a class="skip-link" href="#main">Zum Inhalt</a>
+<header class="app-header">
+  <a class="brand" routerLink="/"
+    ><span class="brand-mark" aria-hidden="true">↗</span
+    ><span>Feldfreund<small>RETRIEVER TRAINING</small></span></a
+  ><span class="header-note">Zeit für euch.</span>
+</header>
+<main id="main" tabindex="-1">
+  @if (store.loading()) {
+    <div class="card loading" role="status">Dein Trainingstagebuch wird geladen …</div>
+  } @else if (store.error()) {
+    <div class="card">
+      <h1>Speicher nicht erreichbar</h1>
+      <p class="error" role="alert">{{ store.error() }}</p>
+      <button class="primary" (click)="store.load()">Erneut versuchen</button>
+    </div>
+  } @else {
+    <router-outlet />
+  }
+</main>
+<nav class="main-nav" aria-label="Hauptnavigation">
+  <a
+    routerLink="/"
+    routerLinkActive="active"
+    [routerLinkActiveOptions]="{ exact: true }"
+    ariaCurrentWhenActive="page"
+    ><span aria-hidden="true">⌂</span>Übersicht</a
+  >
+  <a routerLink="/training" routerLinkActive="active" ariaCurrentWhenActive="page"
+    ><span aria-hidden="true">＋</span>Training</a
+  >
+  <a routerLink="/history" routerLinkActive="active" ariaCurrentWhenActive="page"
+    ><span aria-hidden="true">↺</span>Historie</a
+  >
+  <a routerLink="/dogs" routerLinkActive="active" ariaCurrentWhenActive="page"
+    ><span aria-hidden="true">♧</span>Hunde</a
+  >
+</nav>
