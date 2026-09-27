@@ -22,7 +22,7 @@ npm test                 # Watch-Modus
 npm run build
 ```
 
-Produktionsdateien: `dist/retriever-trainer/browser`. Auf einem statischen Host müssen unbekannte App-Routen wie `/dogs` und `/history` auf `index.html` zurückfallen. Der Angular-Devserver übernimmt das bereits. `.openai/hosting.json` ordnet den statischen Build der privaten Sites-Vorschau zu.
+Produktionsdateien: `dist/client`. Auf einem statischen Host müssen unbekannte App-Routen wie `/dogs` und `/history` auf `index.html` zurückfallen. Der Angular-Devserver übernimmt das bereits. `.openai/hosting.json` ordnet den statischen Build einer vorbereiteten privaten Site zu. Eine Veröffentlichung erfordert noch die Freigabe des Quellcode-Uploads.
 
 ## Architektur
 
