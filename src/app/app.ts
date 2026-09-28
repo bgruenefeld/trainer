@@ -1,5 +1,6 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { MitchellStore } from './core/application/mitchell-store';
 import { TrainerStore } from './core/application/trainer-store';
 @Component({
   selector: 'app-root',
@@ -9,7 +10,12 @@ import { TrainerStore } from './core/application/trainer-store';
 })
 export class App implements OnInit {
   readonly store = inject(TrainerStore);
+  readonly progress = inject(MitchellStore);
   ngOnInit(): void {
-    void this.store.load();
+    void this.reload();
+  }
+  async reload(): Promise<void> {
+    await this.store.load();
+    if (!this.store.error()) await this.progress.load();
   }
 }

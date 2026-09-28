@@ -1,21 +1,16 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { Dog, DogId } from '../domain/dog/dog';
-import { TrainingSession } from '../domain/training/training';
-import { DOG_REPOSITORY, INITIALIZE_DATA, SESSION_REPOSITORY } from './providers';
+import { ArchivedTraining } from './training-archive';
+import { DOG_REPOSITORY, INITIALIZE_DATA, TRAINING_ARCHIVE } from './providers';
 import { DogService } from './dog/dog-service';
-import { TrainingService } from './training/training-service';
 @Injectable({ providedIn: 'root' })
 export class TrainerStore {
   private readonly dogsRepository = inject(DOG_REPOSITORY);
-  private readonly sessionRepository = inject(SESSION_REPOSITORY);
+  private readonly sessionRepository = inject(TRAINING_ARCHIVE);
   private readonly initializeData = inject(INITIALIZE_DATA);
   private readonly dogService = new DogService(this.dogsRepository);
-  private readonly trainingService = new TrainingService(
-    this.dogsRepository,
-    this.sessionRepository,
-  );
   private readonly dogState = signal<readonly Dog[]>([]);
-  private readonly sessionState = signal<readonly TrainingSession[]>([]);
+  private readonly sessionState = signal<readonly ArchivedTraining[]>([]);
   private readonly selectedId = signal<DogId | undefined>(undefined);
   readonly dogs = this.dogState.asReadonly();
   readonly selectedDog = computed(() => this.dogs().find((dog) => dog.id === this.selectedId()));
@@ -60,13 +55,5 @@ export class TrainerStore {
     await this.dogService.save(dog);
     this.dogState.update((dogs) => [...dogs, dog]);
     this.selectDog(dog.id);
-  }
-  async saveSession(session: TrainingSession): Promise<void> {
-    await this.trainingService.save(session);
-    this.sessionState.update((sessions) => [
-      ...sessions.filter((s) => s.id !== session.id),
-      session,
-    ]);
-    this.selectDog(session.dogId);
   }
 }

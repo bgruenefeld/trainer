@@ -6,13 +6,13 @@
   ><span class="header-note">Zeit für euch.</span>
 </header>
 <main id="main" tabindex="-1">
-  @if (store.loading()) {
+  @if (store.loading() || (progress.loading() && !store.error())) {
     <div class="card loading" role="status">Dein Trainingstagebuch wird geladen …</div>
-  } @else if (store.error()) {
+  } @else if (store.error() || progress.error()) {
     <div class="card">
       <h1>Speicher nicht erreichbar</h1>
-      <p class="error" role="alert">{{ store.error() }}</p>
-      <button class="primary" (click)="store.load()">Erneut versuchen</button>
+      <p class="error" role="alert">{{ store.error() || progress.error() }}</p>
+      <button class="primary" (click)="reload()">Erneut versuchen</button>
     </div>
   } @else {
     <router-outlet />
@@ -25,6 +25,12 @@
     [routerLinkActiveOptions]="{ exact: true }"
     ariaCurrentWhenActive="page"
     ><span aria-hidden="true">⌂</span>Übersicht</a
+  >
+  <a routerLink="/roadmap" routerLinkActive="active" ariaCurrentWhenActive="page"
+    ><span aria-hidden="true">◇</span>Trainingsplan</a
+  >
+  <a routerLink="/skills" routerLinkActive="active" ariaCurrentWhenActive="page"
+    ><span aria-hidden="true">◐</span>Skills</a
   >
   <a routerLink="/training" routerLinkActive="active" ariaCurrentWhenActive="page"
     ><span aria-hidden="true">＋</span>Training</a

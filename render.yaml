@@ -1,0 +1,21 @@
+# Render Dashboard: New > Blueprint > Repository auswählen.
+services:
+  - type: web
+    name: feldfreund
+    runtime: static
+    buildCommand: npm ci --include=dev && npm run build -- --configuration production
+    staticPublishPath: ./dist/client
+    envVars:
+      # Die Installation erfolgt reproduzierbar über das eingecheckte Lockfile.
+      - key: SKIP_INSTALL_DEPS
+        value: "true"
+    routes:
+      # Direkte Aufrufe und Reloads von /roadmap, /training, /skills/... unterstützen.
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      # Auch SPA-Einstiegsseiten und Service-Worker-Dateien auf Updates prüfen.
+      - path: /*
+        name: Cache-Control
+        value: no-cache

@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
 import { describe, expect, it, vi } from 'vitest';
+import { MitchellStore } from './core/application/mitchell-store';
 import { App } from './app';
 import { TrainerStore } from './core/application/trainer-store';
 describe('App-Speicherfehler', () => {
@@ -13,7 +14,14 @@ describe('App-Speicherfehler', () => {
     };
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideRouter([]), { provide: TrainerStore, useValue: store }],
+      providers: [
+        provideRouter([]),
+        { provide: TrainerStore, useValue: store },
+        {
+          provide: MitchellStore,
+          useValue: { loading: signal(false), error: signal(''), load: vi.fn() },
+        },
+      ],
     }).compileComponents();
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();

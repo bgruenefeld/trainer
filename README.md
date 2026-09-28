@@ -1,10 +1,18 @@
 # Feldfreund · Retriever Training
 
-Mobile-first Angular-App zum Dokumentieren von Retriever- und Dummytraining. Der Prototyp bietet Hundeanlage, Dashboard, schrittweise Trainingserfassung und eine nach Hund gefilterte Historie. Alle Daten bleiben in diesem Browser auf diesem Gerät.
+Mobile-first Angular-App für die Dokumentation von Retrievertraining. Die aktuelle Oberfläche verwendet einen aus der bereitgestellten Zusammenfassung von Wayne Mitchells „Retriever Trainer's Handbook“ abgeleiteten Katalog. Sie trennt Skills, Voraussetzungen, Übungen, individuelle Beobachtungen und Trainingshistorie.
 
-## Entwicklung
+Die Buchstellen wurden nicht unabhängig geprüft. Quellenstatus und offene fachliche Inhalte bleiben in der App sichtbar. Es gibt keine automatisch erfundenen Trainingsregeln, Prozentbewertungen, KI-Empfehlungen oder Altersfreigaben.
 
-Voraussetzungen: Node **24.15 oder neuer innerhalb der 24er-Reihe** (alternativ Node ^22.22.3 oder >=26), npm. `.nvmrc` verwendet Node 24. Angular **22.2.0** ist die beim Setup über npm bestätigte stabile Version. Die Systemversion Node 22.22.1 ist dafür zu alt.
+## Auf Render veröffentlichen
+
+Die App ist für Render als **Static Site** vorbereitet. Im Render Dashboard **New → Blueprint** wählen und das Repository verbinden; `render.yaml` übernimmt Build, Ausgabeverzeichnis und Angular-Routing.
+
+Die vollständige [Schritt-für-Schritt-Anleitung](docs/render-deployment.md) beschreibt auch das Hochladen des Projekts und die Prüfung nach dem Deployment. Trainingsdaten bleiben browserlokal; es gibt keine automatische Geräte-Synchronisierung.
+
+## Lokal starten
+
+Voraussetzungen: Node **24.15+ innerhalb der 24er-Reihe**, alternativ ^22.22.3 oder >=26; npm. `.nvmrc` verwendet Node 24. Die vorinstallierte Node-Version 22.22.1 ist zu alt für Angular 22.2.
 
 ```sh
 nvm install
@@ -13,97 +21,125 @@ npm ci
 npm start
 ```
 
-App: http://localhost:4200. Alternativ ohne nvm, wenn Node 24 noch nicht systemweit installiert ist: `npx --yes --package=node@24 -c 'npm start'`.
+Die App läuft unter http://localhost:4200. Falls der Port belegt ist: `npm start -- --port 4201`.
+
+Ohne nvm kann ein kompatibler Prozess gestartet werden:
 
 ```sh
-npm run lint
-npm run test:ci
-npm test                 # Watch-Modus
-npm run build
+npx --yes --package=node@24 -c 'npm start -- --port 4201'
 ```
 
-Produktionsdateien: `dist/client`. Auf einem statischen Host müssen unbekannte App-Routen wie `/dogs` und `/history` auf `index.html` zurückfallen. Der Angular-Devserver übernimmt das bereits. `.openai/hosting.json` ordnet den statischen Build einer vorbereiteten privaten Site zu. Eine Veröffentlichung erfordert noch die Freigabe des Quellcode-Uploads.
+## Funktionen und Routen
+
+| Route               | Inhalt                                                                                             |
+| ------------------- | -------------------------------------------------------------------------------------------------- |
+| `/`                 | Aktiver Hund, bewusst gewählte Schwerpunkte, aktive Skills, Pflege und Regression                  |
+| `/skills`           | 38 Skills, Kategorien, qualitative Zustände und Hinweise auf offene Voraussetzungen                |
+| `/skills/:id`       | Zweck, Voraussetzungen, Folgeskills, Kompetenz und Zustand mit Verlauf, Übungen, Probleme und Quelle |
+| `/puppy-foundation` | Sieben eigenständige Puppy-Module                                                                  |
+| `/exercises/:id`    | Setup, Handlerverhalten, Erwartungen, Kriterien, Probleme, Faktoren und Inhaltslücken              |
+| `/training`         | Übung und Hund wählen, Bedingungen erfassen, Beobachtungen dokumentieren, speichern                |
+| `/history`          | Mitchell-Einträge sowie unverändert erhaltene frühere Aufzeichnungen                               |
+| `/dogs`             | Hunde anlegen und auswählen                                                                        |
+
+Der Übergang Puppy→Heelwork wird in den Heelwork-Details anhand von sieben individuell beurteilten Indikatoren erfasst. Der frühere Jumping-Hinweis ist als Prüfungskandidat außerhalb des aktiven Seeds erhalten und blockiert keine Readiness. Die Readiness-Indikatoren werden separat vom Skill-Status gespeichert. Die Dokumentation einer Übung verändert keinen Skill-Zustand automatisch.
 
 ## Architektur
-
-Abhängigkeiten zeigen zur Domain. Es gibt keine Angular-Imports in den Domain-Dateien. Die fachlichen Application-Services verwenden ausschließlich die Repository-Interfaces. Angular-spezifische Signals und DI sind in der Application-Fassade und im Trainingsentwurf gekapselt. Die Komponenten binden diese Zustände und delegieren Aktionen.
 
 ```text
 src/app/
   core/
     domain/
-      dog/             Dog, DogId, Validierung, DogRepository
-      skill/           Skill, SkillId, LINE_OUT
-      exercise/        Exercise als wiederverwendbare Vorlage
-      training/        Setup, Performance, Run, Session, Repository
+      dog/                     Bestehendes Hundemodell
+      skills/                  Qualitative Zustände, Assessments, Graph und Readiness
+      handler/                 Handler-Skills
+      exercises/               Übungen, Faktoren und Guidance
+      problems/                Ursachenhypothesen und Anpassungen
+      training-plan/           Ziele, Roadmaps, individuelle Trainingsprofile
+      training-session/        Ausführungen, Beobachtungen und Übungssnapshots
+      sources/                 Quellen und Prüfstatus
+      shared/                  Typisierte IDs
+      skill/, exercise/, training/   Bisherige Modelle für Altbestände
     application/
-      dog/             DogService
-      training/        TrainingService und TrainingDraft
-      providers.ts     DI-Tokens für Repository-Ports
-      trainer-store.ts Signals-Fassade, Hundauswahl, Ladevorgänge
-    infrastructure/
-      persistence/     IndexedDB, Repository-Adapter, einmaliger Demo-Seed
-  features/
-    dashboard/         Übersicht, Schwerpunkt, letztes Training
-    dogs/              Hunde anzeigen und anlegen
-    training/          Sechsstufige Trainingserfassung
-    history/           Historie des ausgewählten Hundes
-  shared/
-    components/        Hundauswahl und Session-Karte
-    models/            Deutsche Labels für fachliche Typen
+      mitchell-store.ts        Signals-Fassade und Schreibaktionen
+      trainer-store.ts         Hundeauswahl und frühere Sessions
+      exercises/               Geprüfte Katalogabfragen
+      readiness/               Individuelle Voraussetzungen und offene Prüfungen
+      training/                Trainingsentwürfe
+    infrastructure/persistence/
+      indexed-db.ts            Versionierte Datenbankverbindung
+      initialize-mitchell.ts   Einmaliger Einstieg ohne erfundene Entwicklungsstände
+      mitchell-repositories.ts Neue Repository-Adapter
+      repositories.ts          Hunde und frühere Sessions
+  data/mitchell/               Quellenbezogener Skill-, Übungs- und Problemkatalog
+  features/                   Lazy geladene Seiten
+  shared/                     Kleine UI-Komponenten, Quellenanzeige und Labels
 ```
 
-Die vier Seiten werden per Router lazy geladen. Die DI-Zuordnung liegt zentral in `app.config.ts`. Ein späterer REST-Adapter implementiert `DogRepository` und `TrainingSessionRepository`; nur die Provider und die Dateninitialisierung werden ausgetauscht. Domain, Services und Seiten müssen dafür nicht grundsätzlich umgebaut werden. Die Fassade hält für diesen kleinen Prototyp alle Sessions im Speicher; für große Datenmengen kann sie später paginierte Abfragen verwenden.
+Die Domain importiert weder Angular noch IndexedDB. Repository-Interfaces bilden die Persistenzgrenze; die Provider in `app.config.ts` verbinden sie mit lokalen Adaptern. Ein REST-Backend kann später über andere Adapter eingebunden werden.
 
-## Fachliches Modell
+Es gibt ein einziges fachliches Domainmodell. Der alte Voran-Erfassungsflow und die Singular-Domainordner sind entfernt. Frühere Trainings bleiben über einen lesenden Archivadapter sichtbar; daraus werden keine Mitchell-Bewertungen abgeleitet.
 
-**Skill → TrainingMethod → TrainingSetup → Performance → TrainingSession** beschreibt die fachliche Trennung, keine Vererbung und keine Levelhierarchie:
+## Fachliche Trennung
 
-- **Skill:** die Fähigkeit, hier `LINE_OUT` / Voran; inklusive Name, Beschreibung und Kategorie.
-- **TrainingMethod:** die Methode, hier sichtbares Ziel, Memory, Geländeleitlinie, gestaffelte Apporte oder Blind. Memory und Blind sind keine eigenen Skills.
-- **TrainingSetup:** voneinander unabhängige Bedingungen: Meter, Sichtbarkeit beim Start, Kenntnis der Zielstelle durch den Hund, Leitlinie, Wartezeit, Verleitung, Gelände und Sichtbarkeit des Gegenstands am Ziel. `retrieveObject` unterscheidet Dummy und Tennisball.
-- **Performance:** optionale Bewertung je fachlichem Kriterium, `NEEDS_SUPPORT`, `MOSTLY` oder `RELIABLE`. Ein fehlender Eintrag bedeutet „nicht bewertet“, niemals „nicht geschafft“. Es gibt keinen Gesamt-Score.
-- **TrainingRun:** tatsächliche Ausführung mit Skill-ID, Methode, konkretem Setup, Einzelbewertungen und optionaler Notiz.
-- **TrainingSession:** Hund-ID, ISO-Zeitpunkt, Dauer **in Minuten**, Notizen und eine Liste von Durchläufen.
-- **Exercise:** optionale Vorlage mit vorgeschlagenem Setup. Ein Durchlauf speichert seine tatsächlichen Bedingungen als Snapshot.
-- **Dog:** typisierte ID, Name, Geburtsdatum als `YYYY-MM-DD`, Rasse, optional Geschlecht und Foto-URL.
+- **SkillDefinition:** Fähigkeit im Katalog, mit Kategorie, Zweck und Quelle.
+- **SkillDependency:** gerichtete Hard-/Soft-/Maintenance-Beziehung; keine numerische Levelleiter.
+- **DogSkillAssessment:** individuelle, begründete Einschätzung mit Kontext und Zeitpunkt.
+- **TrainingExercise:** Methode und Aufbau der konkreten Übung, beteiligte Hunde-/Handler-Skills, Faktoren und Kriterien.
+- **ExerciseExecution:** tatsächlich durchgeführte Übung mit Bedingungen, optionalen Kriterienbewertungen und Beobachtungen.
+- **TrainingSession:** Hund, Trainingssystem, Zeitpunkt, optionale tatsächliche Dauer, Ausführungen und Reflexion.
+- **TrainingProblem:** mehrere mögliche Ursachen und dazugehörige Anpassungen; keine automatisch festgestellte Diagnose.
 
-Meter, Gelände, Zielkenntnis und andere Dimensionen werden nicht auf eine gemeinsame Schwierigkeitszahl reduziert. Ein 100-m-Memory kann unter bestimmten Bedingungen leichter sein als ein 40-m-Blind. Spätere Dimensionen wie Wind oder Bewuchsdichte können als zusätzliche typisierte Felder ergänzt werden; beim Persistenzschema ist dann eine Migration bestehender Datensätze erforderlich.
+`not_started`, `introduced`, `learning`, `stable`, `generalised`, `maintenance` und `regressed` sind qualitative Zustände ohne Zahlenrang. Noch nicht beurteilte Skills sind entsprechend gekennzeichnet. Readiness bleibt eine separate Beurteilung der hinterlegten Prüfungen, keine allgemeine Trainingsfreigabe.
 
-`TrainingService` validiert Sessions und prüft die Existenz des Hundes. Die Domain validiert unter anderem positive Distanzen/Dauern, nichtnegative Wartezeiten, echte Geburtsdaten, mindestens einen Durchlauf, eindeutige Durchlauf-IDs und Einzelbewertungen. Repositories validieren vor dem Schreiben zusätzlich die fachlichen Grundregeln. Eine spätere externe API benötigt darüber hinaus vollständige Validierung unbekannter Payloads an der Systemgrenze.
+Die alte Trennung Skill → TrainingMethod → TrainingSetup → Performance → TrainingSession bleibt ausschließlich für Altbestände bestehen. Im neuen Modell trägt die Übung die konkrete methodische Ausgestaltung; ihre Ausführung dokumentiert die Realität.
 
-## Speicherung und Offline-Betrieb
+Weitere Details: [Domain-Modell](docs/domain-model.md), [Mitchell-Katalog](docs/mitchell-catalog.md), [Puppy Foundation](docs/puppy-foundation.md), [Migration und UI-Anbindung](docs/migration-and-ui.md).
 
-Native IndexedDB ohne zusätzliche Datenbankbibliothek: versioniertes Schema mit `dogs`, `sessions`, `meta`; ein Index auf `dogId` unterstützt gezielte Abfragen. Schreib-Promises werden erst beim Transaktionsabschluss erfolgreich. Es gibt keinen stillen Wechsel zu flüchtigem Speicher: Fehler werden angezeigt, Entwürfe bleiben während der Erfassung bestehen.
+## Persistenz und Migration
 
-Der Demo-Seed schreibt Hund, drei Trainings und einen Marker in einer gemeinsamen Transaktion. Er ist wiederholbar und bei parallelen Tabs sicher. Er überschreibt keine späteren Änderungen. Schemaänderungen gehören in den `onupgradeneeded`-Handler von `indexed-db.ts`.
+Der bestehende Datenbankname `retriever-trainer-v1` bleibt unverändert. **IndexedDB-Schema-Version 2** ergänzt `skillAssessments`, `systemSessions`, `trainingProfiles`, `goals` und `roadmaps`; die bisherigen Stores `dogs`, `sessions` und `meta` bleiben erhalten.
 
-Angular Service Worker und Web-App-Manifest sind im **Produktionsbuild** aktiviert. HTTPS oder localhost sind erforderlich. Nach dem ersten erfolgreichen Laden und der Service-Worker-Aktivierung werden App-Shell, lazy geladene Seiten, Icons und das Beispielfoto für Offline-Nutzung vorgehalten. Der Development-Server registriert keinen Service Worker. Installierbarkeit und Offline-Reload sollten vor produktiver Verwendung zusätzlich auf den vorgesehenen Mobilgeräten geprüft werden.
+Die Schemaänderung erfolgt innerhalb der IndexedDB-Upgrade-Transaktion. Es werden keine alten Sessions umgeschrieben, gelöscht oder zu Skill-Bewertungen konvertiert. Bestehende Hunde behalten ihre IDs und Daten. Frische Installationen erhalten einmalig den fiktiven Demo-Hund Reggae, aber keine alten Voran-Demotrainings oder vorausgefüllten Skill-Zustände.
 
-Browserdaten können vom Benutzer oder Betriebssystem gelöscht werden. Es gibt noch keinen Export, Backup, Sync oder serverseitige Sicherung. Die Hundauswahl ist lokaler UI-State und wird beim Neuladen auf den ersten vorhandenen Hund zurückgesetzt. Ein noch nicht gespeicherter Trainingsentwurf überlebt keinen Reload oder Routenwechsel.
+Skill-Assessments werden angehängt; dieselbe ID kann nicht überschrieben werden. Schreibaktionen melden erst nach dem Commit Erfolg. Neue Ausführungen enthalten einen Übungssnapshot, damit die zum Training gehörenden Kriterien, Inhalte und Quellen auch bei späteren Katalogänderungen erhalten bleiben.
 
-## Annahmen und bewusst begrenzter Umfang
+Schwerpunkte und qualitative Readiness-Einschätzungen werden je Hund und System getrennt gespeichert. Die Auswahl des aktuell angezeigten Hundes bleibt flüchtiger UI-State. Nicht gespeicherte Formulare und Trainingsentwürfe überleben keinen Reload oder Routenwechsel.
 
-- Deutsche Oberfläche, ein Benutzer pro Browser, keine Anmeldung.
-- Demo-Hund Reggae, Labrador Retriever. Geburtsdatum 12.04.2022 und Geschlecht sind fiktive Ergänzungen.
-- Die UI erfasst zunächst **einen Durchlauf pro Session**; Domain, Repository und Historie unterstützen mehrere.
-- Das Trainingsdatum ist der Zeitpunkt des Speicherns; die Dauer gibt der Benutzer in Minuten an.
-- Der Dashboard-Schwerpunkt „Voran“ ist redaktionell festgelegt, keine automatische Empfehlung.
-- Die Methoden liefern hilfreiche Startwerte; das Setup ist anschließend frei und unabhängig editierbar.
-- Die drei Demotrainings (15 m sichtbarer Tennisball, 50 m Memory, 30 m Blind) sind Anschauungsdaten und keine fachlich berechnete Progression.
-- Noch keine Difficulty Engine, automatisierte Planung, Gesamtbewertung, Fortschrittsdiagramme, weiteren Skills, Foto-Uploads, Bearbeitungs-/Löschfunktionen oder Backend-Anbindung.
-- Zusätzliche Feature-Ordner werden erst angelegt, wenn die zugehörige Funktion implementiert wird.
+Es gibt keine Synchronisierung zwischen Geräten und keine automatische Aktualisierung zwischen parallel geöffneten Tabs. Browserdaten können gelöscht werden; Export und Backup sind noch nicht implementiert.
 
-## Tests
-
-Vitest über den offiziellen Angular-Testbuilder. `fake-indexeddb` emuliert IndexedDB nur in Tests. Geprüft werden fachliche Invarianten, Teilbewertungen, mehrere Durchläufe, dauerhafte Wiederöffnung, Upsert, Hundeisolation, Kopiersemantik, einmaliges Seeding bei parallelen Starts, Hundeexistenz, Entwurfsvalidierung und die Fehleranzeige der App.
+## Tests und Build
 
 ```sh
 npm run test:ci
+npm test                 # Watch-Modus
+npm run lint
+npm run build
 ```
 
-Diese Tests ersetzen keinen realen Browser-/Gerätetest des Service Workers und der Installation.
+Vitest über den Angular-Testbuilder; `fake-indexeddb` nur in Tests. Tests umfassen Domain-Invarianten, Katalogintegrität, Graph-Traversierung, Readiness, echte v1→v2-Migration, dauerhafte Speicherung, Hundeisolation, Schreibfehler und Angular-Routen-/Formularintegration.
+
+Produktionsdateien: `dist/client`. Unbekannte App-Routen müssen auf `index.html` zurückfallen. Die lokale Sites-Konfiguration enthält dieses SPA-Fallback. Es wurde keine Veröffentlichung vorgenommen; der Quellcode-Upload an Sites ist weiterhin nicht freigegeben.
+
+## PWA
+
+Service Worker und Manifest sind im Produktionsbuild aktiviert; HTTPS oder localhost sind erforderlich. Nach dem ersten erfolgreichen Laden und der Service-Worker-Aktivierung werden App-Dateien, lazy geladene Seiten, Icons und das Beispielfoto vorgehalten. Im Devserver ist der Service Worker deaktiviert.
+
+Ein visueller Smartphone-Test und ein realer Offline-/Installationstest stehen noch aus; in der Arbeitsumgebung war kein Browser verfügbar.
+
+## Bewusste Grenzen
+
+- Der kanonische Seed basiert auf der laut Nutzer anhand bereitgestellter Buchseiten geprüften fachlichen Extraktion. Evidence bleibt mangels Edition `provided_summary`.
+- Nicht vorgegebene Durchführungsschritte bleiben offen. Informal Puppy Retrieve enthält die ausdrücklich vorgegebenen Progressionen und Regressionen; bei anderen Übungen bleiben diese Felder offen.
+- Der Flow dokumentiert zunächst eine Übungsausführung pro Session; das Modell unterstützt mehrere.
+- Langfristige Ziele und Roadmaps haben Modelle und Repository-Adapter; eine eigene Zielplanungsoberfläche folgt später. Die App unterstellt kein langfristiges Ziel.
+- Keine KI, automatische Diagnose, Trainingsplanung, Rankings, Gamification, Cloud, Konten oder sozialen Funktionen.
+- Noch keine Bearbeitung oder Löschung gespeicherter Trainings, Foto-Uploads oder Backup-Funktion.
 
 ## Bildquelle
 
-Das Labradorfoto ist ein **Beispielfoto, kein tatsächliches Foto von Reggae**. Franca, [Labrador Retriever yellow portrait](https://commons.wikimedia.org/wiki/File:Labrador_Retriever_yellow_portrait.jpg), [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/). Die Oberfläche zeigt einen runden Ausschnitt. Die PWA-Icons sind einfache geometrische Richtungszeichen.
+Das Labradorfoto ist ein **Beispielfoto, kein tatsächliches Foto von Reggae**. Franca, [Labrador Retriever yellow portrait](https://commons.wikimedia.org/wiki/File:Labrador_Retriever_yellow_portrait.jpg), [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/). Die Oberfläche zeigt einen Ausschnitt. Reggaes Geburtsdatum und Geschlecht sind fiktive Demodaten.
+
+### Heelwork
+
+Der kanonische Katalog enthält zusätzlich sechs Heelwork Exercises und vier Heelwork Problems; insgesamt 13 Exercises, sieben Problems und elf Dependencies. Puppy Foundation bleibt auf seine sieben Übungen begrenzt. Heelwork ist über die Skill-Details und die bestehende Trainingserfassung erreichbar. Übungsvoraussetzungen sind rein methodische Referenzen, Altersangaben ausschließlich Text-Guidance. Details: [Heelwork](docs/heelwork.md).

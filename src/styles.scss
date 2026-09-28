@@ -455,7 +455,7 @@ input[type='checkbox'] {
   background: var(--blue);
   margin-bottom: 20px;
 }
-@media (min-width: 800px) {
+@media (min-width: 960px) {
   .flow-actions {
     bottom: 24px;
   }
@@ -536,5 +536,149 @@ input[type='checkbox'] {
     transition:
       background-color 0.15s,
       border-color 0.15s;
+  }
+}
+
+.section-space {
+  margin-top: 24px;
+}
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+.roadmap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 18px;
+}
+.roadmap-card {
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  color: var(--ink);
+}
+.roadmap-card:hover {
+  border-color: var(--green);
+}
+.roadmap-card h2 {
+  margin: 0;
+}
+.skill-line {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+  min-height: 48px;
+  text-decoration: none;
+}
+.skill-line span {
+  font-size: 0.9rem;
+}
+.status-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  background: #e8f1e5;
+  border-radius: 8px;
+  font-weight: 650;
+}
+.status-badge.regression {
+  background: #fff0d2;
+}
+.readiness-note {
+  color: #624811;
+  font-size: 0.9rem;
+}
+.assessment-row {
+  padding: 20px 0;
+  border-top: 1px solid var(--line);
+}
+.assessment-row h3 {
+  margin-bottom: 12px;
+}
+.source-note {
+  padding: 18px 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding: 10px 0;
+  font-weight: 650;
+}
+li {
+  margin-bottom: 8px;
+}
+@media (max-width: 500px) {
+  .rating-options {
+    grid-template-columns: 1fr 1fr;
+  }
+  .partner-copy .primary {
+    min-width: 0;
+    font-size: 0.9rem;
+  }
+  .partner-photo {
+    width: 85px;
+    height: 85px;
+  }
+}
+
+.training-roadmap {
+  list-style: none;
+  padding: 0 0 0 1rem;
+  border-left: 2px solid currentColor;
+}
+.training-roadmap [aria-current='step'] {
+  outline: 2px solid currentColor;
+}
+
+.training-shell .flow-actions {
+  top: max(8px, env(safe-area-inset-top));
+  bottom: auto;
+  z-index: 5;
+  flex-wrap: wrap;
+}
+.training-shell .flow-actions button {
+  min-height: 48px;
+}
+.training-roadmap > li {
+  position: relative;
+  margin-left: 0.75rem;
+}
+.training-roadmap > li::before {
+  content: '';
+  position: absolute;
+  left: -2.2rem;
+  top: 1.5rem;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  border: 2px solid var(--green);
+  background: var(--surface, #fff);
+}
+.training-roadmap > li[aria-current='step']::before {
+  background: var(--green);
+}
+[id] {
+  scroll-margin-top: 5rem;
+}
+@media (max-width: 480px) {
+  .training-shell {
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+  .training-shell .flow-actions {
+    padding: 8px;
+    gap: 8px;
+  }
+  .training-shell .flow-actions button {
+    flex: 1;
+    min-width: 0;
   }
 }

@@ -1,0 +1,181 @@
+<div class="page-heading">
+  <div>
+    <p class="eyebrow">Mitchell · Trainingsplan</p>
+    <h1>Euer Trainingsweg</h1>
+    <p class="muted">
+      Mitchells didaktische Reihenfolge. Individuelle Einschätzungen bleiben maßgeblich.
+    </p>
+  </div>
+  <app-dog-picker />
+</div>
+@if (error()) {
+  <p class="error" role="alert">{{ error() }}</p>
+}
+@if (notice()) {
+  <p role="status">{{ notice() }}</p>
+}
+@if (store.roadmap(); as roadmap) {
+  <section class="card section-space">
+    <h2>Aktueller Schwerpunkt</h2>
+    <p>
+      {{
+        roadmap.currentStage?.title ?? 'Kein automatischer Schwerpunkt – weiterer Weg als Ausblick'
+      }}
+    </p>
+    <p>
+      {{
+        roadmap.userSelected
+          ? 'Von dir gewählt. Ein Fokus ist keine Kompetenzbehauptung.'
+          : 'Vorgeschlagen aus eurem dokumentierten Stand.'
+      }}
+    </p>
+    @if (roadmap.userSelected) {
+      <button (click)="focus()" [disabled]="store.busy()">Automatischen Vorschlag verwenden</button>
+    }
+    @if (roadmap.nextStage; as next) {
+      <h3 class="section-space">Nächster vorgesehener Abschnitt</h3>
+      <p>{{ next.title }}</p>
+      @if (next.contentStatus === 'planned') {
+        <p>Detaillierte Trainingsinhalte werden noch ergänzt.</p>
+      }
+    }
+  </section>
+  <div class="two-columns">
+    <section class="card">
+      <h2>Bereits stabil</h2>
+      @for (stage of roadmap.establishedStages; track stage.stage.id) {
+        <p>✓ {{ stage.stage.title }}</p>
+      }
+      @for (assessment of roadmap.stableSkills; track assessment.skillId) {
+        <p>
+          <a [routerLink]="['/skills', assessment.skillId]">{{
+            store.graph.getSkill(assessment.skillId).name
+          }}</a>
+          @if (assessment.condition === 'maintenance') {
+            · ↻ Pflegebedarf
+          }
+        </p>
+      } @empty {
+        <p>Noch keine aktuellen stabilen Einschätzungen vorhanden.</p>
+      }
+    </section>
+    <section class="card">
+      <h2>Im Aufbau</h2>
+      @for (assessment of roadmap.buildingSkills; track assessment.skillId) {
+        <p>
+          <a [routerLink]="['/skills', assessment.skillId]">{{
+            store.graph.getSkill(assessment.skillId).name
+          }}</a>
+        </p>
+      } @empty {
+        <p>Noch keine Skills als eingeführt oder im Aufbau beurteilt.</p>
+      }
+      <p>
+        Dokumentierte Übungsausführungen stehen beim jeweiligen Abschnitt. Sie bedeuten keinen
+        Übungsabschluss.
+      </p>
+    </section>
+  </div>
+  <section class="card section-space">
+    <h2>Aufmerksamkeit</h2>
+    @for (finding of roadmap.attention; track $index) {
+      <p>
+        <a [routerLink]="['/skills', finding.skillId]">{{
+          store.graph.getSkill(finding.skillId!).name
+        }}</a>
+        · {{ findings[finding.kind] }} · {{ finding.explanation }}
+      </p>
+    } @empty {
+      <p>
+        Keine entsprechenden Befunde dokumentiert. Fehlende Bewertungen sind kein festgestelltes
+        Defizit.
+      </p>
+    }
+    @if (store.pendingReassessments().length) {
+      <p>
+        Für historische Einschätzungen ist eine erneute Beurteilung erforderlich.
+        <a routerLink="/skills">Skills prüfen</a>
+      </p>
+    }
+  </section>
+  <h2 class="section-space">Gesamttrainingsweg</h2>
+  <ol class="training-roadmap">
+    @for (row of roadmap.stages; track row.stage.id) {
+      <li
+        class="card section-space"
+        [id]="row.stage.id"
+        [attr.aria-current]="row.stage.id === roadmap.currentStage?.id ? 'step' : null"
+      >
+        <h3>{{ row.stage.title }}</h3>
+        <p>
+          {{
+            row.stage.contentStatus === 'planned'
+              ? '○ Geplanter Abschnitt · Detailinhalte noch nicht vollständig aufbereitet'
+              : statuses[row.status]
+          }}
+        </p>
+        @if (row.stage.id === roadmap.currentStage?.id) {
+          <p><strong>Aktueller Schwerpunkt</strong></p>
+        }
+        @for (finding of row.findings; track $index) {
+          @if (finding.kind !== 'not_yet_relevant' && finding.kind !== 'current_focus') {
+            <p>
+              {{ findings[finding.kind] }}:
+              {{ finding.skillId ? store.graph.getSkill(finding.skillId).name : row.stage.title }}
+            </p>
+          }
+        }
+        <button (click)="focus(row.stage.id)" [disabled]="store.busy()">
+          Als Schwerpunkt wählen
+        </button>
+        <details class="section-space">
+          <summary>Einordnung und Details</summary>
+          @for (explanation of row.explanations; track $index) {
+            <p>{{ explanation }}</p>
+          }
+          @for (id of row.stage.skillIds; track id) {
+            <p>
+              <a [routerLink]="['/skills', id]">{{ store.graph.getSkill(id).name }}</a>
+            </p>
+          }
+          @if (row.stage.contentStatus === 'available') {
+            <h4>Übungen</h4>
+            @for (id of row.stage.exerciseIds; track id) {
+              <p>
+                <a [routerLink]="['/exercises', id]">{{ store.catalog.findExercise(id)?.title }}</a>
+                @if (store.exerciseHistory().get(id); as date) {
+                  · Bereits trainiert · zuletzt trainiert am {{ date | date: 'dd.MM.yyyy' }}
+                } @else {
+                  · Noch nicht dokumentiert
+                }
+                · Aktueller Skillstatus: {{ exerciseSkillState(id) }}
+              </p>
+            }
+            @if (row.stage.readinessGuidance?.length) {
+              <h4>Hinweise zum Einstieg</h4>
+            }
+            @for (note of row.stage.readinessGuidance ?? []; track $index) {
+              <p>{{ note.text }}</p>
+              <app-training-source [source]="note.source" />
+            }
+            @if (row.stage.completionGuidance?.length) {
+              <h4>Qualitative Einordnung und Übergang</h4>
+              <p>Methodenhinweise, keine automatische Abschlussregel.</p>
+            }
+            @for (note of row.stage.completionGuidance ?? []; track $index) {
+              <p>{{ note.text }}</p>
+              <app-training-source [source]="note.source" />
+            }
+          }
+          <app-training-source [source]="row.stage.source" />
+        </details>
+      </li>
+    }
+  </ol>
+  <app-training-source [source]="roadmap.roadmap.source" />
+} @else {
+  <section class="card">
+    <p>Bitte zuerst einen Hund anlegen, um den individuellen Trainingsplan zu sehen.</p>
+    <a routerLink="/dogs">Meine Hunde</a>
+  </section>
+}

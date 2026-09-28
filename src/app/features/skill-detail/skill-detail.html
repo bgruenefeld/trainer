@@ -1,0 +1,285 @@
+<a routerLink="/skills">← Zur Roadmap</a>
+@if (row(); as row) {
+  <div class="page-heading section-space">
+    <div>
+      <p class="eyebrow">Mitchell · Skill</p>
+      <h1>{{ row.skill.name }}</h1>
+      <p>{{ row.skill.purpose }}</p>
+    </div>
+    <app-dog-picker />
+  </div>
+  <div class="two-columns">
+    <section class="card">
+      <h2>Dein dokumentierter Stand</h2>
+      <p class="status-badge">
+        {{
+          row.reassessmentRequired
+            ? 'Neue Einschätzung erforderlich'
+            : row.competence
+              ? labels[row.competence!]
+              : 'Noch nicht beurteilt'
+        }}
+      </p>
+      <button
+        class="section-space"
+        (click)="focus()"
+        [disabled]="store.busy() || !store.dogs.selectedDog()"
+        [attr.aria-pressed]="row.focused"
+      >
+        {{ row.focused ? 'Schwerpunkt entfernen' : 'Als Schwerpunkt wählen' }}
+      </button>
+      @if (row.condition; as condition) {
+        <p>{{ conditionLabels[condition] }}</p>
+      }
+      <form class="section-space" (ngSubmit)="save()">
+        <label
+          >Kompetenz<select name="competence" [(ngModel)]="competence" required>
+            <option value="" disabled>Bitte neu einschätzen</option>
+            @for (state of states; track state) {
+              <option [value]="state">{{ labels[state] }}</option>
+            }
+          </select></label
+        ><label
+          >Zustand<select name="condition" [(ngModel)]="condition">
+            @for (value of conditions; track value) {
+              <option [value]="value">{{ conditionLabels[value] }}</option>
+            }
+          </select></label
+        ><label
+          >Beobachtete Bedingungen<input
+            name="context"
+            [(ngModel)]="context"
+            required
+            maxlength="300"
+            placeholder="Unter welchen Bedingungen?" /></label
+        ><label
+          >Deine Beobachtung<textarea
+            name="rationale"
+            [(ngModel)]="rationale"
+            required
+            maxlength="2000"
+          ></textarea></label
+        ><button class="primary" [disabled]="store.busy() || !store.dogs.selectedDog()">
+          Stand dokumentieren
+        </button>
+      </form>
+    </section>
+    <section class="card">
+      <h2>Voraussetzungen</h2>
+      @for (edge of dependencies(); track edge.id) {
+        <p>
+          <a [routerLink]="['/skills', edge.requirement.skillId]">{{
+            store.graph.getSkill(edge.requirement.skillId).name
+          }}</a>
+          ·
+          {{
+            edge.requirement.type === 'hard'
+              ? 'Voraussetzung'
+              : edge.requirement.type === 'soft'
+                ? 'Hilfreicher Einfluss'
+                : 'Weiter pflegen'
+          }}
+        </p>
+        <p class="muted">{{ edge.requirement.rationale }}</p>
+      } @empty {
+        <p>Keine konkreten Skill-Voraussetzungen im vorliegenden Katalog hinterlegt.</p>
+      }
+      @if (row.readiness; as readiness) {
+        <p class="review section-space">
+          {{
+            readiness.status === 'ready'
+              ? 'Die hinterlegten Prüfungen sind erfüllt. Das ist keine allgemeine Trainingsfreigabe.'
+              : readiness.status === 'not_ready'
+                ? 'Mindestens eine hinterlegte Voraussetzung ist nicht erfüllt.'
+                : 'Die Voraussetzungen sind noch nicht vollständig geklärt.'
+          }}
+        </p>
+        @for (review of readiness.requirements; track review.requirement.skillId) {
+          <p>
+            {{ store.graph.getSkill(review.requirement.skillId).name }}:
+            {{
+              review.result === 'met'
+                ? 'erfüllt'
+                : review.result === 'not_met'
+                  ? 'nicht erfüllt'
+                  : 'offen'
+            }}
+          </p>
+        }
+      }
+      <p class="local-note">
+        Unbelegte Statusschwellen werden nicht automatisch ergänzt. Alter schaltet keine Fähigkeiten
+        frei.
+      </p>
+      <h3 class="section-space">Darauf aufbauende Skills</h3>
+      @for (edge of dependents(); track edge.id) {
+        <a class="skill-line" [routerLink]="['/skills', edge.targetSkillId]"
+          >{{ store.graph.getSkill(edge.targetSkillId).name }} →</a
+        >
+      } @empty {
+        <p>Keine weiteren Beziehungen hinterlegt.</p>
+      }
+    </section>
+  </div>
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+  @if (notice()) {
+    <p class="success" role="status">{{ notice() }}</p>
+  }
+  @if (skillIndicators().length) {
+    <section class="card section-space">
+      <h2>Puppy → Heelwork: qualitative Einschätzung</h2>
+      <p>Beurteile die einzelnen Beobachtungen. Daraus entsteht keine Altersgrenze.</p>
+      @for (indicator of skillIndicators(); track indicator.id) {
+        <form class="assessment-row" (ngSubmit)="saveIndicator(indicator.id)">
+          <h3>{{ indicator.description }}</h3>
+          <label
+            >Einschätzung<select
+              [name]="indicator.id"
+              [ngModel]="indicatorValues[indicator.id] ?? 'unknown'"
+              (ngModelChange)="indicatorValues[indicator.id] = $event"
+            >
+              <option value="unknown">Noch offen</option>
+              <option value="met">Beobachtet / erfüllt</option>
+              <option value="not_met">Noch nicht erfüllt</option>
+            </select></label
+          ><label
+            >Beobachtung<input
+              [name]="indicator.id + '-note'"
+              [(ngModel)]="indicatorNotes[indicator.id]"
+              required /></label
+          ><button [disabled]="store.busy() || !store.dogs.selectedDog()">
+            Einschätzung speichern
+          </button>
+        </form>
+      }
+    </section>
+  }
+  @for (check of physical(); track check.id) {
+    <section class="card section-space">
+      <h2>{{ check.description }}</h2>
+      <form (ngSubmit)="constraint(check.id)">
+        <label
+          >Individuelle Einschätzung<select
+            [name]="check.id"
+            [ngModel]="constraintValues[check.id] ?? 'unknown'"
+            (ngModelChange)="constraintValues[check.id] = $event"
+          >
+            <option value="unknown">Noch ungeklärt</option>
+            <option value="restricted">Eingeschränkt</option>
+            <option value="clear">Geprüft, keine Einschränkung festgestellt</option>
+          </select></label
+        ><label
+          >Begründung<input
+            [name]="check.id + '-note'"
+            [(ngModel)]="constraintNotes[check.id]"
+            required /></label
+        ><button [disabled]="store.busy() || !store.dogs.selectedDog()">
+          Prüfung dokumentieren
+        </button>
+      </form>
+    </section>
+  }
+  @if (row.skill.code === 'heelwork') {
+    <section class="card section-space">
+      <h2>Mitchell-spezifische Heelwork-Guidance</h2>
+      <p>
+        Alters-Guidance: {{ store.heelworkGuidance.recommendedAge?.text }}. Keine automatische
+        Freischaltung.
+      </p>
+      <ul>
+        @for (note of store.heelworkGuidance.notes; track $index) {
+          <li>{{ note }}</li>
+        }
+      </ul>
+      <h3>Qualitative Hinweise zum Einstieg</h3>
+      <ul>
+        @for (note of store.heelworkReadinessGuidance; track $index) {
+          <li>{{ note.text }}</li>
+        }
+      </ul>
+      <h3>Kompetenz einordnen</h3>
+      @for (competence of states; track competence) {
+        @if (store.heelworkCompetenceGuidance[competence]; as note) {
+          <p>
+            <strong>{{ labels[competence] }}:</strong> {{ note.text }}
+          </p>
+        }
+      }
+      <app-training-source [source]="store.heelworkGuidance.source" />
+    </section>
+  }
+  @if (row.skill.code === 'heelwork' || row.skill.code === 'steadiness') {
+    <section class="card section-space">
+      <h2>Mitchell: Übergang zu Steadiness</h2>
+      <ul>
+        @for (note of store.heelworkSteadinessGuidance; track $index) {
+          <li>{{ note.text }}</li>
+        }
+      </ul>
+      <p>Beschreibende Guidance, keine automatische Kompetenzbewertung.</p>
+      <app-training-source [source]="store.heelworkGuidance.source" />
+    </section>
+  }
+  <section class="card section-space">
+    <h2>Übungen und mögliche Weiterentwicklung</h2>
+    @for (exercise of exercises(); track exercise.id) {
+      <a class="skill-line" [routerLink]="['/exercises', exercise.id]">{{ exercise.title }} →</a>
+    } @empty {
+      <p>
+        Für diesen Skill ist noch keine Übung ausgearbeitet. Es werden keine Trainingsschritte
+        automatisch ergänzt.
+      </p>
+    }
+    <p class="local-note">
+      Belegte Anpassungen und offene Inhalte findest du in den Übungsdetails.
+    </p>
+  </section>
+  <section class="card section-space">
+    <h2>Bekannte Probleme</h2>
+    @for (problem of problems(); track problem.id) {
+      <details>
+        <summary>{{ problem.title }}</summary>
+        <p>{{ problem.observedBehaviour }}</p>
+        <ul>
+          @for (cause of problem.possibleCauses; track cause.id) {
+            <li>{{ cause.description }}</li>
+          }
+        </ul>
+        <p class="muted">Mögliche Ursachen, keine festgestellte Diagnose.</p>
+        <h3>Anpassungen</h3>
+        <ul>
+          @for (adjustment of problem.adjustments; track adjustment.id) {
+            <li>{{ adjustment.description }}</li>
+          }
+        </ul>
+        <app-training-source [source]="problem.source" />
+      </details>
+    } @empty {
+      <p>Keine konkreten Problemfälle zugeordnet.</p>
+    }
+  </section>
+  <section class="card section-space">
+    <h2>Verlauf deiner Einschätzungen</h2>
+    @for (assessment of history(); track assessment.id) {
+      <div class="assessment-row">
+        <strong
+          >{{ labels[assessment.competence] }} · {{ conditionLabels[assessment.condition] }}</strong
+        >
+        ·
+        {{ assessment.assessedAt | date: 'dd.MM.yyyy HH:mm' }}
+        <p>{{ assessment.context }}</p>
+        <p class="notes">{{ assessment.rationale }}</p>
+      </div>
+    } @empty {
+      <p>Noch keine Beurteilungen gespeichert.</p>
+    }
+  </section>
+  <app-training-source [source]="row.skill.source" />
+} @else {
+  <section class="card section-space">
+    <h1>Skill nicht gefunden</h1>
+    <a routerLink="/skills">Zur Roadmap</a>
+  </section>
+}

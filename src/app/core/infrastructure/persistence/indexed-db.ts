@@ -4,14 +4,33 @@ export class TrainerDatabase {
   constructor(private readonly name = 'retriever-trainer-v1') {}
   open(): Promise<IDBDatabase> {
     return (this.connection ??= new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.name, 1);
+      let blocked = false;
+      const request = indexedDB.open(this.name, 2);
       request.onupgradeneeded = () => {
         const db = request.result;
-        db.createObjectStore('dogs', { keyPath: 'id' });
-        db.createObjectStore('sessions', { keyPath: 'id' }).createIndex('dogId', 'dogId');
-        db.createObjectStore('meta');
+        if (!db.objectStoreNames.contains('dogs')) db.createObjectStore('dogs', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('sessions'))
+          db.createObjectStore('sessions', { keyPath: 'id' }).createIndex('dogId', 'dogId');
+        if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');
+        for (const name of [
+          'skillAssessments',
+          'systemSessions',
+          'trainingProfiles',
+          'goals',
+          'roadmaps',
+        ]) {
+          if (!db.objectStoreNames.contains(name))
+            db.createObjectStore(name, { keyPath: 'id' }).createIndex('dogSystem', [
+              'dogId',
+              'systemId',
+            ]);
+        }
       };
       request.onsuccess = () => {
+        if (blocked) {
+          request.result.close();
+          return;
+        }
         request.result.onversionchange = () => {
           request.result.close();
           this.connection = undefined;
@@ -23,6 +42,7 @@ export class TrainerDatabase {
         reject(request.error);
       };
       request.onblocked = () => {
+        blocked = true;
         this.connection = undefined;
         reject(new Error('Bitte andere App-Tabs schließen und erneut versuchen.'));
       };
@@ -38,11 +58,11 @@ export class TrainerDatabase {
       tx.onerror = () => reject(tx.error);
     });
   }
-  async write(store: string, value: unknown): Promise<void> {
+  async write(store: string, value: unknown, mode: 'put' | 'add' = 'put'): Promise<void> {
     const db = await this.open();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(store, 'readwrite');
-      tx.objectStore(store).put(value);
+      tx.objectStore(store)[mode](value);
       tx.oncomplete = () => resolve();
       tx.onabort = () => reject(tx.error ?? new Error('Speichern abgebrochen.'));
       tx.onerror = () => reject(tx.error);

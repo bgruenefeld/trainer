@@ -1,0 +1,256 @@
+<div class="training-shell">
+  @if (saved()) {
+    <section class="card">
+      <h1>Training gespeichert.</h1>
+      <p>
+        Beobachtungen für {{ dogName(draft()!.dogId) }}. Eure Kompetenzbewertungen bleiben
+        unverändert.
+      </p>
+      <p>Begonnen: {{ draft()!.startedAt() | date: 'dd.MM.yyyy HH:mm' }}</p>
+      @for (criterion of draft()!.exercise.successCriteria; track criterion.id) {
+        @if (draft()!.ratings()[criterion.id]; as rating) {
+          @for (choice of choices; track choice.value) {
+            @if (choice.value === rating) {
+              <p>{{ criterion.description }}: {{ choice.label }}</p>
+            }
+          }
+        }
+      }
+      @if (draft()!.notes) {
+        <p>{{ draft()!.notes }}</p>
+      }
+      @if (partiallyObserved()) {
+        <h2>Diese Übung weiter festigen</h2>
+      }
+      <button class="primary" (click)="repeat()">Gleiche Übung erneut trainieren</button>
+      @for (exercise of following(); track exercise.id) {
+        <p>
+          Nächster methodischer Schritt im Aufbau:
+          <a [routerLink]="['/exercises', exercise.id]">{{ exercise.title }}</a>
+        </p>
+      }
+      <p><a routerLink="/roadmap">Zum Trainingsplan</a></p>
+      <a routerLink="/history">Eintrag ansehen</a>
+    </section>
+  } @else if (draft(); as draft) {
+    <div class="page-heading">
+      <div>
+        <p class="eyebrow">{{ dogName(draft.dogId) }} · Training</p>
+        <h1>{{ draft.exercise.title }}</h1>
+      </div>
+    </div>
+    <div class="flow-actions">
+      @switch (draft.step()) {
+        @case (0) {
+          <button (click)="this.draft.set(undefined)">Auswahl ändern</button
+          ><button class="primary" (click)="draft.next()">Bedingungen erfassen</button>
+        }
+        @case (1) {
+          <button (click)="draft.step.set(0)">Vorbereitung</button
+          ><button class="primary" (click)="draft.begin()">Training beginnen</button>
+        }
+        @case (2) {
+          <button class="primary" (click)="draft.next()">Training abschließen</button>
+        }
+        @case (3) {
+          <button class="primary" (click)="draft.next()">Weiter zur Reflexion</button>
+        }
+        @case (4) {
+          <button [disabled]="store.busy()" (click)="draft.step.set(3)">Kriterien ansehen</button
+          ><button class="primary" [disabled]="store.busy()" (click)="save()">
+            {{ store.busy() ? 'Speichert …' : 'Training speichern' }}
+          </button>
+        }
+      }
+    </div>
+    <section class="card section-space">
+      @switch (draft.step()) {
+        @case (0) {
+          <app-exercise-preparation
+            [exercise]="draft.exercise"
+            [exercises]="exercises"
+            [handlers]="store.handlerSkills"
+          />
+        }
+        @case (1) {
+          <h2>Bedingungen</h2>
+          <p>Alle Angaben sind optional. Beschreibe die tatsächlichen Bedingungen.</p>
+          <label
+            >Umgebung<textarea [(ngModel)]="draft.environment" maxlength="2000"></textarea>
+          </label>
+          <label
+            >Deine Position und dein Verhalten<textarea
+              [(ngModel)]="draft.handler"
+              maxlength="2000"
+            ></textarea>
+          </label>
+          @for (factor of draft.exercise.difficultyFactors; track factor) {
+            <label [for]="'factor-' + factor"
+              >{{ factorLabels[factor] }}
+              @if (factor === 'distance') {
+                <input
+                  [id]="'factor-' + factor"
+                  type="number"
+                  min="0"
+                  inputmode="decimal"
+                  [(ngModel)]="draft.distance"
+                />
+              } @else if (numeric(factor)) {
+                <input
+                  [id]="'factor-' + factor"
+                  type="number"
+                  min="0"
+                  inputmode="decimal"
+                  [(ngModel)]="draft.factorValues[factor]"
+                />
+              } @else if (factor === 'visibility') {
+                <select [id]="'factor-' + factor" [(ngModel)]="draft.factorValues[factor]">
+                  <option value="">Offen</option>
+                  <option value="visible">Sichtbar</option>
+                  <option value="partly_hidden">Teilweise verborgen</option>
+                  <option value="hidden">Verborgen</option>
+                </select>
+              } @else if (factor === 'wind_direction') {
+                <select [id]="'factor-' + factor" [(ngModel)]="draft.factorValues[factor]">
+                  <option value="">Offen</option>
+                  <option value="headwind">Gegenwind</option>
+                  <option value="tailwind">Rückenwind</option>
+                  <option value="crosswind">Seitenwind</option>
+                  <option value="variable">Wechselnd</option>
+                  <option value="calm">Windstill</option>
+                  <option value="unknown">Unbekannt</option>
+                </select>
+              } @else {
+                <input
+                  [id]="'factor-' + factor"
+                  type="text"
+                  maxlength="500"
+                  [(ngModel)]="draft.factorValues[factor]"
+                />
+              }
+            </label>
+          }
+        }
+        @case (2) {
+          <h2>Durchführung</h2>
+          <p>Begonnen: {{ draft.startedAt() | date: 'HH:mm' }}</p>
+          <p>{{ draft.exercise.objective }}</p>
+          <p class="muted">Mitchell-spezifische Hinweise</p>
+          @for (note of activeHints(); track $index) {
+            <p>{{ note }}</p>
+          }
+          <h3>Erfolgskriterien zur Orientierung</h3>
+          <ul>
+            @for (criterion of draft.exercise.successCriteria; track criterion.id) {
+              <li>{{ criterion.description }}</li>
+            }
+          </ul>
+        }
+        @case (3) {
+          <h2>Wie lief es?</h2>
+          <p>Nicht beurteilte Kriterien bleiben offen.</p>
+          @for (criterion of draft.exercise.successCriteria; track criterion.id) {
+            <fieldset class="rating-row">
+              <legend>{{ criterion.description }}</legend>
+              <div class="rating-options">
+                <button
+                  [class.selected]="!draft.ratings()[criterion.id]"
+                  [attr.aria-pressed]="!draft.ratings()[criterion.id]"
+                  (click)="draft.rate(criterion.id)"
+                >
+                  Offen
+                </button>
+                @for (choice of choices; track choice.value) {
+                  <button
+                    [class.selected]="draft.ratings()[criterion.id] === choice.value"
+                    [attr.aria-pressed]="draft.ratings()[criterion.id] === choice.value"
+                    (click)="draft.rate(criterion.id, choice.value)"
+                  >
+                    {{ choice.label }}
+                  </button>
+                }
+              </div>
+            </fieldset>
+          } @empty {
+            <p>
+              Keine konkreten Kriterien hinterlegt. Du kannst eine freie Beobachtung dokumentieren.
+            </p>
+          }
+        }
+        @case (4) {
+          <h2>Was ist aufgefallen?</h2>
+          <label
+            >Dauer der Session (Minuten, optional)<input
+              type="number"
+              min="0.1"
+              step="0.1"
+              [(ngModel)]="draft.duration"
+          /></label>
+          <label
+            >Reflexion (optional)<textarea [(ngModel)]="draft.notes" maxlength="4000"></textarea>
+          </label>
+          <p>Beobachtungen verändern keine Kompetenz und erzeugen keinen Übungsabschluss.</p>
+        }
+      }
+      @if (draft.error()) {
+        <p class="error" role="alert">{{ draft.error() }}</p>
+      }
+    </section>
+  } @else {
+    <h1>Training starten</h1>
+    @if (store.recommendation(); as rec) {
+      <section class="card section-space">
+        <h2>Empfohlen</h2>
+        <h3>{{ rec.exercise.title }}</h3>
+        <p>{{ rec.stage.title }} · {{ effects[rec.exercise.trainingEffect] }}</p>
+        <p>{{ rec.exercise.objective }}</p>
+        <button class="primary" (click)="choose(rec.exercise.id)">Diese Übung starten</button>
+        <details>
+          <summary>Warum diese Übung?</summary>
+          @for (reason of rec.reasons; track reason) {
+            <p>{{ reason }}</p>
+          }
+        </details>
+      </section>
+    }
+    <form class="card section-space" (ngSubmit)="start()">
+      <h2>Andere Übung wählen</h2>
+      <label
+        >Hund<select
+          name="dog"
+          [ngModel]="dogId"
+          (ngModelChange)="dogId = $event; store.dogs.selectDog($event)"
+        >
+          @for (dog of store.dogs.dogs(); track dog.id) {
+            <option [value]="dog.id">{{ dog.name }}</option>
+          }
+        </select></label
+      >
+      <label
+        >Übung<select
+          name="exercise"
+          [ngModel]="exercise()?.id ?? ''"
+          (ngModelChange)="exerciseId = $event"
+        >
+          <option value="">Bitte wählen</option>
+          @for (group of groups(); track group.title) {
+            <optgroup [label]="group.title">
+              @for (exercise of group.exercises; track exercise.id) {
+                <option [value]="exercise.id">{{ exercise.title }}</option>
+              }
+            </optgroup>
+          }
+        </select></label
+      >
+      @if (error()) {
+        <p class="error" role="alert">{{ error() }}</p>
+      }
+      <button class="primary full-width" [disabled]="!dogId || !exercise()">
+        Übung vorbereiten
+      </button>
+      @if (!store.dogs.dogs().length) {
+        <a routerLink="/dogs">Hund anlegen</a>
+      }
+    </form>
+  }
+</div>

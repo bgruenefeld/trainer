@@ -1,111 +1,132 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { TrainerStore } from '../../core/application/trainer-store';
+import { DatePipe } from '@angular/common';
+import { MitchellStore } from '../../core/application/mitchell-store';
 import { DogPicker } from '../../shared/components/dog-picker';
-import { SessionCard } from '../../shared/components/session-card';
+import { ExerciseRecommendation } from '../../shared/components/exercise-recommendation';
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterLink, DogPicker, SessionCard],
+  imports: [RouterLink, DogPicker, ExerciseRecommendation, DatePipe],
   template: `
     <div class="page-heading">
       <div>
-        <p class="eyebrow">Draußen. Zusammen. Weiter.</p>
-        <h1>Bereit fürs Training?</h1>
-        <p class="muted">Ein guter Moment für euch zwei.</p>
+        <p class="eyebrow">Mitchell · Übersicht</p>
+        <h1>Gemeinsam weiterlernen.</h1>
       </div>
       <app-dog-picker />
     </div>
-    @if (store.selectedDog(); as dog) {
-      <section class="partner-card">
-        <div class="partner-copy">
-          <span class="eyebrow">Dein Team</span>
-          <h2>Du & {{ dog.name }}</h2>
-          <p>{{ dog.breed }}</p>
-          <a class="button primary" routerLink="/training"
-            >Training starten <span aria-hidden="true">↗</span></a
-          >
-        </div>
-        @if (dog.photoUrl) {
-          <img
-            class="partner-photo"
-            [src]="dog.photoUrl"
-            [alt]="
-              dog.id === 'demo-reggae' ? 'Labrador Retriever – Beispielfoto für Reggae' : dog.name
-            "
-            width="280"
-            height="280"
-          />
-        } @else {
-          <div class="dog-initial" aria-hidden="true">{{ dog.name.charAt(0) }}</div>
-        }
+    @if (store.dogs.selectedDog(); as dog) {
+      <p class="eyebrow">Dein Team</p>
+      <h2>Du & {{ dog.name }}</h2>
+      <section class="card section-space">
+        <h2>Heute</h2>
+        <app-exercise-recommendation [recommendation]="store.recommendation()" />
       </section>
-      @if (dog.id === 'demo-reggae') {
-        <p class="photo-credit">
-          Beispielfoto:
-          <a href="https://commons.wikimedia.org/wiki/File:Labrador_Retriever_yellow_portrait.jpg"
-            >Franca</a
-          >
-          · <a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a> · Ausschnitt
-        </p>
-      }
-      <div class="dashboard-grid">
-        <section>
-          <div class="section-top">
-            <h2>Letztes Training</h2>
-            <a routerLink="/history">Alle ansehen →</a>
-          </div>
-          @if (store.latest(); as session) {
-            <app-session-card [session]="session" />
-          } @else {
-            <div class="card">
-              <h3>Euer erster Eintrag wartet.</h3>
-              <p>Starte ein Training und halte fest, was ihr geübt habt.</p>
+      <section class="card section-space">
+        <h2>Euer Trainingsweg</h2>
+        @if (store.roadmap(); as roadmap) {
+          @if (previous(); as prior) {
+            <p>Vorheriger Abschnitt: {{ prior.stage.title }} · {{ statuses[prior.status] }}</p>
+          }
+          <p>
+            <strong>Aktueller Schwerpunkt:</strong>
+            {{ roadmap.currentStage?.title ?? 'Weiterer Weg als Ausblick' }}
+          </p>
+          @if (roadmap.nextStage; as next) {
+            <p>Nächster vorgesehener Abschnitt: {{ next.title }}</p>
+            @if (next.contentStatus === 'planned') {
+              <p>Detaillierte Trainingsinhalte werden noch ergänzt.</p>
+            }
+          }
+        }
+        <a routerLink="/roadmap">Trainingsplan öffnen</a>
+      </section>
+      <section class="card section-space">
+        <h2>Trainingslage</h2>
+        <div class="dashboard-grid">
+          @for (group of store.trainingSituation(); track group.title) {
+            <div>
+              <h3>{{ group.title }}</h3>
+              @for (row of group.rows; track row.skill.id) {
+                <p>
+                  <a [routerLink]="['/skills', row.skill.id]">{{ row.skill.name }}</a>
+                </p>
+              } @empty {
+                <p class="muted">Keine entsprechenden Einschätzungen dokumentiert.</p>
+              }
             </div>
           }
-        </section>
-        <section>
-          <div class="section-top">
-            <h2>Trainingsschwerpunkt</h2>
-            <span class="small-label">Zum Einstieg</span>
-          </div>
-          <div class="card focus-card">
-            <span class="direction-icon" aria-hidden="true">↑</span>
-            <div>
-              <h3>Eine klare Linie.</h3>
-              <p>
-                Beim Voran übt ihr den geraden Weg zum Ziel. Wähle die Bedingungen passend für euch.
-              </p>
-            </div>
-            <a routerLink="/training">Voran trainieren →</a>
-          </div>
-        </section>
-      </div>
-      <section class="skills-section">
-        <div class="section-top">
-          <h2>Trainingsbereiche</h2>
-          <span class="muted">1 Skill verfügbar</span>
         </div>
-        <a class="card skill-card" routerLink="/training"
-          ><span class="skill-number">01</span>
-          <div>
-            <h3>Voran</h3>
-            <p>Gerade Linie. Selbstständig zum Ziel.</p>
-          </div>
-          <span class="skill-count">5 Methoden <span aria-hidden="true">↗</span></span></a
-        >
+        @for (finding of store.roadmap()?.attention ?? []; track $index) {
+          @if (
+            finding.kind === 'needs_attention' &&
+            finding.skillId &&
+            store.relevantSkillIds().has(finding.skillId)
+          ) {
+            <p>Hinweis: {{ finding.explanation }}</p>
+          }
+        }
+        @if (store.pendingReassessments().length) {
+          <p><a routerLink="/skills">Historische Einschätzungen prüfen</a></p>
+        }
+        <p class="muted">
+          Für spätere Trainingsabschnitte sind noch keine Bewertungen erforderlich.
+        </p>
       </section>
-      <p class="local-note">
-        Auf diesem Gerät gespeichert. Reggaes Beispieltrainings zeigen verschiedene Bedingungen,
-        keine berechnete Progression.
-      </p>
+      <section class="card section-space">
+        <h2>Letztes Training</h2>
+        @if (store.sessions()[0]; as session) {
+          <p>
+            {{ session.startedAt | date: 'dd.MM.yyyy HH:mm' }}
+            @if (session.durationMinutes) {
+              · {{ session.durationMinutes }} Min.
+            }
+          </p>
+          @for (execution of session.executions; track execution.id) {
+            <h3>{{ execution.exerciseSnapshot.title }}</h3>
+            <p>{{ skillName(execution.exerciseSnapshot.primarySkill) }}</p>
+            @for (stage of contexts(execution.exerciseSnapshot.exerciseId); track stage.id) {
+              <p>Aktueller Roadmap-Kontext: {{ stage.title }}</p>
+            }
+          }
+          <p>
+            {{
+              session.reflection ||
+                session.executions[0]?.setup?.environmentNotes ||
+                'Keine freie Beobachtung dokumentiert.'
+            }}
+          </p>
+          <a routerLink="/history" [fragment]="session.id">Details</a>
+        } @else {
+          <p>Noch kein Training dokumentiert.</p>
+        }
+      </section>
     } @else {
-      <div class="card">
-        <h2>Wer trainiert mit dir?</h2>
-        <a class="button primary" routerLink="/dogs">Hund anlegen</a>
-      </div>
+      <a class="button primary" routerLink="/dogs">Hund anlegen</a>
     }
   `,
 })
 export class Dashboard {
-  readonly store = inject(TrainerStore);
+  readonly store = inject(MitchellStore);
+  readonly statuses = {
+    established: '✓ Etabliert',
+    ready_to_progress: '◇ Bereit für den nächsten Abschnitt',
+    active: '◐ Im Aufbau',
+    not_started: '○ Noch nicht begonnen',
+    needs_attention: '⚠ Aufmerksamkeit',
+  };
+  previous() {
+    const roadmap = this.store.roadmap();
+    if (!roadmap) return undefined;
+    const index = roadmap.stages.findIndex((s) => s.stage.id === roadmap.currentStage?.id);
+    return index > 0 ? roadmap.stages[index - 1] : roadmap.establishedStages.at(-1);
+  }
+  skillName(id: string) {
+    return this.store.skills.find((s) => s.id === id)?.name ?? id;
+  }
+  contexts(id: string) {
+    return this.store.roadmapCatalog
+      .getRoadmap()
+      .stages.filter((s) => s.exerciseIds.some((e) => e === id));
+  }
 }

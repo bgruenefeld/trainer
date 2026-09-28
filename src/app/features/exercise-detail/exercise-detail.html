@@ -1,0 +1,219 @@
+<a routerLink="/skills">← Skills</a>
+@if (exercise(); as exercise) {
+  <div class="page-heading section-space">
+    <div>
+      <p class="eyebrow">Mitchell · Übung</p>
+      <h1>{{ exercise.title }}</h1>
+      <p>{{ exercise.objective }}</p>
+    </div>
+  </div>
+  <div class="chip-list">
+    <span class="badge">{{ effects[exercise.trainingEffect] }}</span
+    ><a class="button" [routerLink]="['/skills', exercise.primarySkill]">{{
+      store.graph.getSkill(exercise.primarySkill).name
+    }}</a>
+  </div>
+  @if (!exercise.steps.length) {
+    <p class="review section-space">
+      Die Zusammenfassung enthält noch keine konkrete Durchführung für dieses Modul. Der Eintrag ist
+      keine vollständige Trainingsanleitung.
+    </p>
+  }
+  @if (prerequisiteExercises().length) {
+    <section class="card section-space">
+      <h2>Methodische Übungsvoraussetzungen</h2>
+      <p>
+        Beschreibt den Aufbau innerhalb des Trainingssystems; keine automatische Trainingssperre.
+      </p>
+      @for (entry of prerequisiteExercises(); track entry.id) {
+        <a class="skill-line" [routerLink]="['/exercises', entry.id]">{{ entry.title }}</a>
+      }
+    </section>
+  }
+  <div class="two-columns">
+    <section class="card">
+      <h2>Setup</h2>
+      <ul>
+        @for (line of exercise.setup.instructions; track $index) {
+          <li>{{ line }}</li>
+        }
+        @for (line of exercise.setup.conditions; track $index) {
+          <li>{{ line }}</li>
+        }
+        @for (line of exercise.setup.equipment; track $index) {
+          <li>{{ line }}</li>
+        }
+      </ul>
+      @if (exercise.environment?.contexts?.length) {
+        <h3>Kontexte</h3>
+        <p>{{ exercise.environment.contexts.join(' · ') }}</p>
+      }
+      @if (exercise.optimalTriggers.length) {
+        <h3 class="section-space">Passender Moment</h3>
+        <ul>
+          @for (trigger of exercise.optimalTriggers; track trigger) {
+            <li>{{ trigger }}</li>
+          }
+        </ul>
+      }
+      <h3 class="section-space">Schwierigkeitsfaktoren</h3>
+      <div class="chip-list">
+        @for (factor of exercise.difficultyFactors; track factor) {
+          <span class="badge">{{ factorLabels[factor] }}</span>
+        }
+      </div>
+      @if (exercise.guidance?.initialTrainingDuration) {
+        <p class="local-note">
+          Quellenbezogene Guidance: {{ exercise.guidance.initialTrainingDuration }}
+        </p>
+      }
+      @if (exercise.guidance?.distanceGuidance) {
+        <p class="local-note">Quellenbezogene Guidance: {{ exercise.guidance.distanceGuidance }}</p>
+      }
+    </section>
+    <section class="card">
+      <h2>Handler-Verhalten und Ablauf</h2>
+      <ol>
+        @for (step of exercise.steps; track step.id) {
+          <li>
+            <strong>{{ step.instruction }}</strong>
+            <ul>
+              @for (line of step.handlerBehaviour; track line) {
+                <li>{{ line }}</li>
+              }
+            </ul>
+          </li>
+        } @empty {
+          <li>Konkrete Schritte sind noch offen.</li>
+        }
+      </ol>
+      @if (exercise.source.section === 'Heelwork') {
+        <h3>Mitchell-spezifische Heelwork-Guidance</h3>
+      }
+      @if (exercise.guidance?.recommendedAge?.text; as age) {
+        <p>Alters-Guidance: {{ age }}. Keine automatische Freischaltung.</p>
+      }
+      @for (note of exercise.guidance?.notes ?? []; track $index) {
+        <p>{{ note }}</p>
+      }
+      <h3 class="section-space">Deine Fähigkeiten</h3>
+      @for (handler of handlers(); track handler.id) {
+        <p>{{ handler.name }} · {{ handler.purpose }}</p>
+      } @empty {
+        <p>Noch keine konkreten Handler-Skills zugeordnet.</p>
+      }
+    </section>
+  </div>
+  <section class="card section-space">
+    <h2>Erwartetes Verhalten</h2>
+    <ul>
+      @for (line of exercise.expectedBehaviour; track line) {
+        <li>{{ line }}</li>
+      }
+    </ul>
+    <h3>Beobachtbare Erfolgskriterien</h3>
+    <ul>
+      @for (criterion of exercise.successCriteria; track criterion.id) {
+        <li>{{ criterion.description }}</li>
+      } @empty {
+        <li>Konkrete Kriterien sind noch offen.</li>
+      }
+    </ul>
+  </section>
+  <section class="card section-space">
+    <h2>Progression und Regression</h2>
+    <h3>Progression</h3>
+    @for (item of exercise.progression; track item.id) {
+      <p>{{ item.description }}</p>
+      @for (change of item.changes; track change.factor) {
+        <p>
+          {{ factorLabels[change.factor] }}:
+          {{
+            change.direction === 'increase'
+              ? 'erhöhen'
+              : change.direction === 'decrease'
+                ? 'reduzieren'
+                : 'Änderung ohne festgelegte Richtung'
+          }}
+        </p>
+      }
+    }
+    <h3>Regression</h3>
+    @for (item of exercise.regression; track item.id) {
+      <p>{{ item.description }}</p>
+      @for (change of item.changes; track change.factor) {
+        <p>
+          {{ factorLabels[change.factor] }}:
+          {{
+            change.direction === 'increase'
+              ? 'erhöhen'
+              : change.direction === 'decrease'
+                ? 'reduzieren'
+                : 'Änderung ohne festgelegte Richtung'
+          }}
+        </p>
+      }
+    }
+    @if (!exercise.progression.length && !exercise.regression.length) {
+      <p>
+        Keine konkreten Anpassungsanleitungen in der vorliegenden Zusammenfassung. Es werden keine
+        Distanzsprünge oder Wiederholungszahlen ergänzt.
+      </p>
+    }
+    @if (exercise.contentGaps?.length) {
+      <details class="section-space">
+        <summary>Offene fachliche Inhalte</summary>
+        <ul>
+          @for (gap of exercise.contentGaps; track gap.field) {
+            <li>{{ gap.reason }}</li>
+          }
+        </ul>
+      </details>
+    }
+  </section>
+  <section class="card section-space">
+    <h2>Typische Probleme untersuchen</h2>
+    <p class="muted">Mehrere Ursachen sind möglich. Diese Hinweise stellen keine Diagnose.</p>
+    @for (problem of problems(); track problem.id) {
+      <details class="section-space">
+        <summary>{{ problem.title }}</summary>
+        <p>{{ problem.observedBehaviour }}</p>
+        <h3 class="section-space">Mögliche Ursachen</h3>
+        <ul>
+          @for (cause of problem.possibleCauses; track cause.id) {
+            <li>{{ cause.description }}</li>
+          }
+        </ul>
+        <h3>Anpassungen und Prüfhinweise</h3>
+        <ul>
+          @for (adjustment of problem.adjustments; track adjustment.id) {
+            <li>{{ adjustment.description }}</li>
+          }
+        </ul>
+        <app-training-source [source]="problem.source" />
+      </details>
+    } @empty {
+      <p>Keine konkreten Problemfälle zugeordnet.</p>
+    }
+  </section>
+  @if (exercise.cautions.length) {
+    <aside class="review section-space">
+      <ul>
+        @for (caution of exercise.cautions; track caution) {
+          <li>{{ caution }}</li>
+        }
+      </ul>
+    </aside>
+  }
+  <app-training-source [source]="exercise.source" />
+  <div class="flow-actions">
+    <a class="button primary" routerLink="/training" [queryParams]="{ exercise: exercise.id }"
+      >Training dokumentieren →</a
+    >
+  </div>
+} @else {
+  <section class="card section-space">
+    <h1>Übung nicht gefunden</h1>
+    <a routerLink="/puppy-foundation">Zu den Modulen</a>
+  </section>
+}
